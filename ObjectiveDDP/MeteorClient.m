@@ -100,6 +100,10 @@
     NSLog(@"================> didReceiveConnectionError: %@", error);
 }
 
+- (void)didCloseWithCode:(NSInteger)code {
+    NSLog(@"================> didDisconnect: %i", code);
+}
+
 #pragma mark Meteor Data Managment
 
 - (void)makeMeteorDataSubscriptions {

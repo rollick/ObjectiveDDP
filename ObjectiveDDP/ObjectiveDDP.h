@@ -40,6 +40,7 @@
 @protocol ObjectiveDDPDelegate
 
 - (void)didOpen;
+- (void)didCloseWithCode:(NSInteger)code;
 - (void)didReceiveMessage:(NSDictionary *)message;
 - (void)didReceiveConnectionError:(NSError *)error;
 

@@ -102,6 +102,10 @@
 
 #pragma mark <SRWebSocketDelegate>
 
+- (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean {
+    [self.delegate didCloseWithCode:code];
+}
+
 - (void)webSocketDidOpen:(SRWebSocket *)webSocket {
     [self.delegate didOpen];
 }
