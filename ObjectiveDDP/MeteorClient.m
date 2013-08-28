@@ -39,6 +39,14 @@
     [self.ddp subscribeWith:uid name:subscriptionName parameters:nil];
 }
 
+- (void)addSubscription:(NSString *)subscriptionName withParamaters:(NSArray *)parameters
+{
+    [self.subscriptions setObject:[NSArray array]
+                           forKey:subscriptionName];
+    NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
+    [self.ddp subscribeWith:uid name:subscriptionName parameters:parameters];
+}
+
 - (void)logonWithUsername:(NSString *)username password:(NSString *)password {
     NSArray *params = @[@{@"A": [self generateAuthVerificationKeyWithUsername:username password:password],
                           @"user": @{@"email":username}}];
