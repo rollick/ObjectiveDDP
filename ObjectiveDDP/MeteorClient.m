@@ -89,6 +89,10 @@
             && message[@"collection"]) {
         [self _parseRemoved:message];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"removed" object:self userInfo:nil];
+    } else if (msg && [msg isEqualToString:@"ready"]
+               && message[@"subs"]) {
+        NSDictionary *object = @{@"subs": message[@"subs"]};
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"ready" object:self userInfo:object];
     } else if (msg && [msg isEqualToString:@"changed"]
             && message[@"collection"]) {
         NSDictionary *object = [self _parseObjectAndUpdateCollection:message];
