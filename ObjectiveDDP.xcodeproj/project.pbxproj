@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		26B67A1017DF109500FE8866 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 26B67A0F17DF109500FE8866 /* libPods.a */; };
 		4000D63A170E880400296229 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4000D639170E880400296229 /* Foundation.framework */; };
 		4000D63F170E880400296229 /* ObjectiveDDP.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4000D63E170E880400296229 /* ObjectiveDDP.h */; };
 		4000D641170E880400296229 /* ObjectiveDDP.m in Sources */ = {isa = PBXBuildFile; fileRef = 4000D640170E880400296229 /* ObjectiveDDP.m */; };
@@ -38,10 +39,8 @@
 		40F8370F1741C62800AF2340 /* MeteorClientSpec.mm in Sources */ = {isa = PBXBuildFile; fileRef = 40F8370E1741C62800AF2340 /* MeteorClientSpec.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		430E014E41C9666E08613FCE /* MockSRWebSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 430E02ACD0BC78CC53F31D72 /* MockSRWebSocket.m */; };
 		430E08B6E86CA801EE954D0F /* MockObjectiveDDPDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 430E092B95390D2D558E5F3B /* MockObjectiveDDPDelegate.m */; };
-		570DE62F4BD74C18AE51ED8C /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2C1F0C9084EA4B2DBD349673 /* libPods.a */; };
 		888B6DFC173B6508001EED80 /* MeteorClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 888B6DFB173B6508001EED80 /* MeteorClient.m */; };
 		888B6DFF173B66EA001EED80 /* BSONIdGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = 888B6DFE173B66EA001EED80 /* BSONIdGenerator.m */; };
-		9D3C062D54114FB1AC5700F0 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 22BE0B3F1B814D98AAAE26CF /* libPods.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -58,9 +57,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		22BE0B3F1B814D98AAAE26CF /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2459525257B94E909C3CA1DF /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = SOURCE_ROOT; };
-		2C1F0C9084EA4B2DBD349673 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		26B67A0F17DF109500FE8866 /* libPods.a */ = {isa = PBXFileReference; lastKnownFileType = file; name = libPods.a; path = "Pods/build/Release-iphoneos/libPods.a"; sourceTree = "<group>"; };
 		4000D636170E880400296229 /* libObjectiveDDP.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libObjectiveDDP.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		4000D639170E880400296229 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		4000D63D170E880400296229 /* ObjectiveDDP-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ObjectiveDDP-Prefix.pch"; sourceTree = "<group>"; };
@@ -187,7 +185,7 @@
 				401AEB80170E9ECC008B38EA /* SystemConfiguration.framework in Frameworks */,
 				4000D63A170E880400296229 /* Foundation.framework in Frameworks */,
 				401AEB7E170E9EC7008B38EA /* libicucore.dylib in Frameworks */,
-				9D3C062D54114FB1AC5700F0 /* libPods.a in Frameworks */,
+				26B67A1017DF109500FE8866 /* libPods.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,7 +201,6 @@
 				4079F9DC170EB31D00194B4A /* Foundation.framework in Frameworks */,
 				4079F9DE170EB31D00194B4A /* CoreGraphics.framework in Frameworks */,
 				4079F9E9170EB31E00194B4A /* Cedar-iOS.framework in Frameworks */,
-				570DE62F4BD74C18AE51ED8C /* libPods.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,7 +231,6 @@
 			isa = PBXGroup;
 			children = (
 				405FD5A71745DABE001F8AE7 /* libcrypto.a */,
-				2C1F0C9084EA4B2DBD349673 /* libPods.a */,
 				401AEB7D170E9EC7008B38EA /* libicucore.dylib */,
 				4079F9DD170EB31D00194B4A /* CoreGraphics.framework */,
 				4079F9E8170EB31E00194B4A /* Cedar-iOS.framework */,
@@ -243,7 +239,7 @@
 				401AEB7F170E9ECC008B38EA /* SystemConfiguration.framework */,
 				4000D639170E880400296229 /* Foundation.framework */,
 				4079F9DA170EB31D00194B4A /* UIKit.framework */,
-				2C1F0C9084EA4B2DBD349673 /* libPods.a */,
+				26B67A0F17DF109500FE8866 /* libPods.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -620,7 +616,11 @@
 				DSTROOT = /tmp/ObjectiveDDP.dst;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ObjectiveDDP/ObjectiveDDP-Prefix.pch";
-				HEADER_SEARCH_PATHS = "${PODS_HEADERS_SEARCH_PATHS}";
+				HEADER_SEARCH_PATHS = (
+					"\"${PODS_ROOT}/Headers\"",
+					"\"${PODS_ROOT}/Headers/SocketRocket\"",
+					"${PODS_HEADERS_SEARCH_PATHS}",
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SDKROOT)/usr/lib/system\"",
@@ -639,7 +639,11 @@
 				DSTROOT = /tmp/ObjectiveDDP.dst;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ObjectiveDDP/ObjectiveDDP-Prefix.pch";
-				HEADER_SEARCH_PATHS = "${PODS_HEADERS_SEARCH_PATHS}";
+				HEADER_SEARCH_PATHS = (
+					"\"${PODS_ROOT}/Headers\"",
+					"\"${PODS_ROOT}/Headers/SocketRocket\"",
+					"${PODS_HEADERS_SEARCH_PATHS}",
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SDKROOT)/usr/lib/system\"",
