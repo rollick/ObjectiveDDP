@@ -1,4 +1,5 @@
 #import "ObjectiveDDP.h"
+#import "DependencyProvider.h"
 
 @implementation ObjectiveDDP
 
@@ -9,16 +10,6 @@
     if (self) {
         self.urlString = urlString;
         self.delegate = delegate;
-        
-        ////
-        // until something like blindside is used, for now just
-        // utilizing blocks to allow for poor man's dependancy
-        // injection (i.e. this can be overriden by a test framework
-        // to return a mock SRWebSocket object.
-        ////
-        self.getSocket = ^SRWebSocket *(NSURLRequest *request) {
-            return [[SRWebSocket alloc] initWithURLRequest:request];
-        };
     }
     
     return self;
@@ -58,13 +49,22 @@
     [self.webSocket send:json];
 }
 
+//unsub (client -> server):
+//  id: string (an arbitrary client-determined identifier for this subscription)
+- (void)unsubscribeWith:(NSString *)id {
+    NSDictionary *fields = @{@"msg": @"unsub", @"id": id};
+    NSString *json = [self _buildJSONWithFields:fields parameters:nil];
+    
+    [self.webSocket send:json];
+}
+
 //method (client -> server):
 //  method: string (method name)
 //  params: optional array of EJSON items (parameters to the method)
 //  id: string (an arbitrary client-determined identifier for this method call)
-- (void)methodWith:(NSString *)id
+- (void)methodWithId:(NSString *)id
               method:(NSString *)method
-        parameters:(NSArray *)parameters {
+          parameters:(NSArray *)parameters {
     NSDictionary *fields = @{@"msg": @"method", @"method": method, @"id": id};
     NSString *json = [self _buildJSONWithFields:fields parameters:parameters];
 
@@ -90,7 +90,7 @@
 - (void)_setupWebSocket {
     NSURL *url = [NSURL URLWithString:self.urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
-    self.webSocket = self.getSocket(request);
+    self.webSocket = [[DependencyProvider sharedProvider] provideSRWebSocketWithRequest:request];
     self.webSocket.delegate = self;
 }
 

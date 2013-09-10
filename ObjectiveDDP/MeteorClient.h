@@ -7,6 +7,7 @@
 @property (strong, nonatomic) ObjectiveDDP *ddp;
 @property (weak, nonatomic) id<DDPAuthDelegate> authDelegate;
 @property (strong, nonatomic) NSMutableDictionary *subscriptions;
+@property (strong, nonatomic) NSMutableDictionary *subscriptionsParameters;
 @property (strong, nonatomic) NSMutableDictionary *collections;
 @property (copy, nonatomic) NSString *sessionToken;
 @property (copy, nonatomic) NSString *userId;
@@ -14,7 +15,8 @@
 
 - (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters;
 - (void)addSubscription:(NSString *)subscriptionName;
-- (void)addSubscription:(NSString *)subscriptionName withParamaters:(NSArray *)parameters;
+- (void)addSubscription:(NSString *)subscriptionName withParameters:(NSArray *)parameters;
+- (void)removeSubscription:(NSString *)subscriptionName;
 - (void)resetCollections;
 - (void)logonWithUsername:(NSString *)username password:(NSString *)password;
 
@@ -27,7 +29,7 @@
 @protocol DDPAuthDelegate <NSObject>
 
 - (void)authenticationWasSuccessful;
-- (void)authenticationFailed;
+- (void)authenticationFailed:(NSString *)reason;
 
 @end
 

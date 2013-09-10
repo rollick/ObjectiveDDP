@@ -15,6 +15,7 @@
     if (self) {
         self.collections = [NSMutableDictionary dictionary];
         self.subscriptions = [NSMutableDictionary dictionary];
+        self.subscriptionsParameters = [NSMutableDictionary dictionary];
         // TODO: subscription version should be set here
     }
     return self;
@@ -27,24 +28,36 @@
 }
 
 - (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters {
-    [self.ddp methodWith:[[BSONIdGenerator generate] substringToIndex:15]
-                  method:methodName
-              parameters:parameters];
+    [self.ddp methodWithId:[[BSONIdGenerator generate] substringToIndex:15]
+                    method:methodName
+                parameters:parameters];
 }
 
 - (void)addSubscription:(NSString *)subscriptionName {
-    [self.subscriptions setObject:[NSArray array]
-                           forKey:subscriptionName];
     NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
+
+    [self.subscriptions setObject:uid
+                           forKey:subscriptionName];
     [self.ddp subscribeWith:uid name:subscriptionName parameters:nil];
 }
 
-- (void)addSubscription:(NSString *)subscriptionName withParamaters:(NSArray *)parameters
-{
-    [self.subscriptions setObject:[NSArray array]
-                           forKey:subscriptionName];
+- (void)addSubscription:(NSString *)subscriptionName withParameters:(NSArray *)parameters {
     NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
+    
+    [self.subscriptions setObject:uid
+                           forKey:subscriptionName];
+    [self.subscriptionsParameters setObject:parameters forKey:subscriptionName];
+    
     [self.ddp subscribeWith:uid name:subscriptionName parameters:parameters];
+}
+
+-(void)removeSubscription:(NSString *)subscriptionName {
+    NSString *uid = [self.subscriptions objectForKey:subscriptionName];
+    
+    if (uid) {
+        [self.ddp unsubscribeWith:uid];
+        [self.subscriptions removeObjectForKey:subscriptionName];
+    }
 }
 
 - (void)logonWithUsername:(NSString *)username password:(NSString *)password {
@@ -65,7 +78,7 @@
 
 - (void)didReceiveMessage:(NSDictionary *)message {
     NSString *msg = [message objectForKey:@"msg"];
-
+    
     // TODO: handle auth login failure with auth delegate call (with meteor server error message)
     if (msg && [msg isEqualToString:@"result"]
             && message[@"result"]
@@ -74,6 +87,10 @@
             && message[@"result"][@"salt"]) {
         NSDictionary *response = message[@"result"];
         [self didReceiveLoginChallengeWithResponse:response];
+    } else if(msg && [msg isEqualToString:@"result"]
+              && message[@"error"]
+              && [message[@"error"][@"error"]integerValue] == 403) {
+        [self.authDelegate authenticationFailed:message[@"error"][@"reason"]];
     } else if (msg && [msg isEqualToString:@"result"]
             && message[@"result"]
             && message[@"result"][@"id"]
@@ -84,18 +101,20 @@
     } else if (msg && [msg isEqualToString:@"added"]
             && message[@"collection"]) {
         NSDictionary *object = [self _parseObjectAndAddToCollection:message];
+        NSString *notificationName = [NSString stringWithFormat:@"%@_added", message[@"collection"]];
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self userInfo:object];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"added" object:self userInfo:object];
     } else if (msg && [msg isEqualToString:@"removed"]
-            && message[@"collection"]) {
+               && message[@"collection"]) {
         [self _parseRemoved:message];
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"removed" object:self userInfo:nil];
-    } else if (msg && [msg isEqualToString:@"ready"]
-               && message[@"subs"]) {
-        NSDictionary *object = @{@"subs": message[@"subs"]};
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"ready" object:self userInfo:object];
+        NSString *notificationName = [NSString stringWithFormat:@"%@_removed", message[@"collection"]];
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"removed" object:self];
     } else if (msg && [msg isEqualToString:@"changed"]
-            && message[@"collection"]) {
+               && message[@"collection"]) {
         NSDictionary *object = [self _parseObjectAndUpdateCollection:message];
+        NSString *notificationName = [NSString stringWithFormat:@"%@_changed", message[@"collection"]];
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self userInfo:object];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"changed" object:self userInfo:object];
     } else if (msg && [msg isEqualToString:@"connected"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:@"connected" object:nil];
@@ -105,6 +124,18 @@
                           parameters:params];
         }
         [self makeMeteorDataSubscriptions];
+    } else if (msg && [msg isEqualToString:@"ready"]) {
+        NSArray *subs = message[@"subs"];
+        for(NSString *readySubscription in subs) {
+            for(NSString *subscriptionName in self.subscriptions) {
+                NSString *curSubId = self.subscriptions[subscriptionName];
+                if([curSubId isEqualToString:readySubscription]) {
+                    NSString *notificationName = [NSString stringWithFormat:@"%@_ready", subscriptionName];
+                    [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self];
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -121,7 +152,11 @@
 - (void)makeMeteorDataSubscriptions {
     for (NSString *key in [self.subscriptions allKeys]) {
         NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
-        [self.ddp subscribeWith:uid name:key parameters:nil];
+        [self.subscriptions setObject:uid forKey:key];  
+        
+        NSArray *params = self.subscriptionsParameters[key];
+
+        [self.ddp subscribeWith:uid name:key parameters:params];
     }
 }
 
@@ -233,8 +268,6 @@ struct SRPUser     * usr;
         self.sessionToken = response[@"token"];
         self.userId = response[@"id"];
         [self.authDelegate authenticationWasSuccessful];
-    } else {
-        [self.authDelegate authenticationFailed];
     }
 }
 

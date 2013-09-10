@@ -15,6 +15,8 @@ describe(@"ObjectiveDDP", ^{
     describe(@"when the framework is initialized", ^{
         beforeEach(^{
             fakeSRWebSocket = [[MockSRWebSocket alloc] init];
+            fakeProvider.fakeSRWebSocket = fakeSRWebSocket;
+            
             fakeDDPDelegate = nice_fake_for(@protocol(ObjectiveDDPDelegate));
 
             spy_on(fakeSRWebSocket);
@@ -23,10 +25,6 @@ describe(@"ObjectiveDDP", ^{
             ddp = [[ObjectiveDDP alloc] initWithURLString:@"websocket"
                                                  delegate:fakeDDPDelegate];
             fakeSRWebSocket.delegate = ddp;
-
-            ddp.getSocket = ^SRWebSocket *(NSURLRequest *request) {
-                return fakeSRWebSocket;
-            };
         });
         
         it(@"should have the correct url string", ^{
@@ -64,7 +62,6 @@ describe(@"ObjectiveDDP", ^{
         });
 
         describe(@"when connect is called with no session or support", ^{
-
             beforeEach(^{
                 [ddp connectWebSocket];
                 [fakeSRWebSocket connectionSuccess];
@@ -131,11 +128,24 @@ describe(@"ObjectiveDDP", ^{
                 [ddp connectWebSocket];
                 [fakeSRWebSocket connectionSuccess];
                 NSArray *params = @[@{@"_id": @"abc", @"msg": @"ohai"}];
-                [ddp methodWith:@"id" method:@"/do/something" parameters:params];
+                [ddp methodWithId:@"id" method:@"/do/something" parameters:params];
             });
 
             it(@"should call the websocket correctly", ^{
                 NSString *expected = @"{\"method\":\"\\/do\\/something\",\"id\":\"id\",\"params\":[{\"_id\":\"abc\",\"msg\":\"ohai\"}],\"msg\":\"method\"}";
+                fakeSRWebSocket should have_received("send:").with(expected);
+            });
+        });
+
+        describe(@"when unsubscribeWith is called", ^{
+            beforeEach(^{
+                [ddp connectWebSocket];
+                [fakeSRWebSocket connectionSuccess];
+                [ddp unsubscribeWith:@"id1"];
+            });
+
+            it(@"calls the websocket correctly", ^{
+                NSString *expected = @"{\"msg\":\"unsub\",\"id\":\"id1\"}";
                 fakeSRWebSocket should have_received("send:").with(expected);
             });
         });
