@@ -5,6 +5,7 @@
 @interface MeteorClient ()
 
 @property (nonatomic, copy) NSString *password;
+@property (nonatomic, retain) NSTimer *timer;
 
 @end
 
@@ -16,6 +17,7 @@
         self.collections = [NSMutableDictionary dictionary];
         self.subscriptions = [NSMutableDictionary dictionary];
         self.subscriptionsParameters = [NSMutableDictionary dictionary];
+        self.methodIds = [NSMutableSet set];
         // TODO: subscription version should be set here
     }
     return self;
@@ -27,10 +29,22 @@
     [self.collections removeAllObjects];
 }
 
-- (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters {
-    [self.ddp methodWithId:[[BSONIdGenerator generate] substringToIndex:15]
+-(NSString *)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters notifyOnResponse:(BOOL)notify {
+    NSString *methodId = [[BSONIdGenerator generate] substringToIndex:15];
+    
+    if(notify == YES) {
+        [self.methodIds addObject:methodId];
+    }
+
+    [self.ddp methodWithId:methodId
                     method:methodName
                 parameters:parameters];
+    
+    return methodId;
+}
+
+- (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters {
+    [self sendWithMethodName:methodName parameters:parameters notifyOnResponse:NO];
 }
 
 - (void)addSubscription:(NSString *)subscriptionName {
@@ -71,16 +85,26 @@
 #pragma mark <ObjectiveDDPDelegate>
 
 - (void)didOpen {
+    [self.timer invalidate];
+    self.timer = nil;
     self.websocketReady = YES;
+    [self resetCollections];
     // TODO: pre1 should be a setting
     [self.ddp connectWithSession:nil version:@"pre1" support:nil];
 }
 
 - (void)didReceiveMessage:(NSDictionary *)message {
     NSString *msg = [message objectForKey:@"msg"];
-    
-    // TODO: handle auth login failure with auth delegate call (with meteor server error message)
-    if (msg && [msg isEqualToString:@"result"]
+    NSString *messageId = message[@"id"];
+
+    if ([self.methodIds containsObject:messageId]) {
+        if(msg && [msg isEqualToString:@"result"]) {
+            NSDictionary *response = message[@"result"];
+            NSString *notificationName = [NSString stringWithFormat:@"response_%@", message[@"id"]];
+            [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self userInfo:response];
+            [self.methodIds removeObject:messageId];
+        }
+    } else if (msg && [msg isEqualToString:@"result"]
             && message[@"result"]
             && message[@"result"][@"B"]
             && message[@"result"][@"identity"]
@@ -143,8 +167,24 @@
     NSLog(@"================> didReceiveConnectionError: %@", error);
 }
 
-- (void)didCloseWithCode:(NSInteger)code {
-    NSLog(@"================> didDisconnect: %i", code);
+- (void)reconnect {
+    if (self.ddp.webSocket.readyState == SR_OPEN) {
+        [self.timer invalidate];
+        self.timer = nil;
+        return;
+    }
+
+    [self.ddp connectWebSocket];
+}
+
+- (void)didReceiveConnectionClose {
+    self.websocketReady = NO;
+    [self.timer invalidate];
+    self.timer = [NSTimer scheduledTimerWithTimeInterval:5
+                                                  target:self
+                                                selector:@selector(reconnect)
+                                                userInfo:nil
+                                                 repeats:YES];
 }
 
 #pragma mark Meteor Data Managment
@@ -153,9 +193,7 @@
     for (NSString *key in [self.subscriptions allKeys]) {
         NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
         [self.subscriptions setObject:uid forKey:key];  
-        
         NSArray *params = self.subscriptionsParameters[key];
-
         [self.ddp subscribeWith:uid name:key parameters:params];
     }
 }
@@ -164,13 +202,10 @@
     NSPredicate *pred = [NSPredicate predicateWithFormat:@"(_id like %@)", message[@"id"]];
     NSMutableArray *collection = self.collections[message[@"collection"]];
     NSArray *filteredArray = [collection filteredArrayUsingPredicate:pred];
-
     NSMutableDictionary *object = filteredArray[0];
-
     for (id key in message[@"fields"]) {
         object[key] = message[@"fields"][key];
     }
-
     return object;
 }
 

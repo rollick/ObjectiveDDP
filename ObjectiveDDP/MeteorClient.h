@@ -8,11 +8,13 @@
 @property (weak, nonatomic) id<DDPAuthDelegate> authDelegate;
 @property (strong, nonatomic) NSMutableDictionary *subscriptions;
 @property (strong, nonatomic) NSMutableDictionary *subscriptionsParameters;
+@property (strong, nonatomic) NSMutableSet *methodIds;
 @property (strong, nonatomic) NSMutableDictionary *collections;
 @property (copy, nonatomic) NSString *sessionToken;
 @property (copy, nonatomic) NSString *userId;
 @property (assign, nonatomic) BOOL websocketReady;
 
+- (NSString *)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters notifyOnResponse:(BOOL)notify;
 - (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters;
 - (void)addSubscription:(NSString *)subscriptionName;
 - (void)addSubscription:(NSString *)subscriptionName withParameters:(NSArray *)parameters;

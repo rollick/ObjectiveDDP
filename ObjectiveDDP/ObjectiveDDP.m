@@ -88,6 +88,7 @@
 }
 
 - (void)_setupWebSocket {
+    self.webSocket = nil;
     NSURL *url = [NSURL URLWithString:self.urlString];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     self.webSocket = [[DependencyProvider sharedProvider] provideSRWebSocketWithRequest:request];
@@ -96,7 +97,6 @@
 
 - (void)_closeConnection {
     [self.webSocket close];
-    self.webSocket = nil;
     [self _setupWebSocket];
 }
 
@@ -112,6 +112,14 @@
 
 - (void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error {
     [self.delegate didReceiveConnectionError:error];
+}
+
+- (void)webSocket:(SRWebSocket *)webSocket
+ didCloseWithCode:(NSInteger)code
+           reason:(NSString *)reason
+         wasClean:(BOOL)wasClean {
+    NSLog(@"Websocket Closed: %i, %@, %i", code, reason, wasClean);
+    [self.delegate didReceiveConnectionClose];
 }
 
 - (void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message {
