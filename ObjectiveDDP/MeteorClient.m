@@ -1,3 +1,4 @@
+#import "DependencyProvider.h"
 #import "MeteorClient.h"
 #import "BSONIdGenerator.h"
 #import "srp/srp.h"
@@ -5,6 +6,7 @@
 @interface MeteorClient ()
 
 @property (nonatomic, copy) NSString *password;
+@property (nonatomic, copy) NSString *userName;
 
 @end
 
@@ -17,7 +19,7 @@
         self.subscriptions = [NSMutableDictionary dictionary];
         self.subscriptionsParameters = [NSMutableDictionary dictionary];
         self.methodIds = [NSMutableSet set];
-        // TODO: subscription version should be set here
+        self.retryAttempts = 0;
     }
     return self;
 }
@@ -36,13 +38,10 @@
     if (!self.websocketReady) {
         return NULL;
     }
-
-    NSString *methodId = [[BSONIdGenerator generate] substringToIndex:15];
-
+    NSString *methodId = [BSONIdGenerator generate];
     if(notify == YES) {
         [self.methodIds addObject:methodId];
     }
-
     [self.ddp methodWithId:methodId
                     method:methodName
                 parameters:parameters];
@@ -55,7 +54,7 @@
 }
 
 - (void)addSubscription:(NSString *)subscriptionName withParameters:(NSArray *)parameters {
-    NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
+    NSString *uid = [BSONIdGenerator generate];
     [self.subscriptions setObject:uid forKey:subscriptionName];
     if (parameters) {
         [self.subscriptionsParameters setObject:parameters forKey:subscriptionName];
@@ -78,47 +77,67 @@
     }
 }
 
+static BOOL userIsLoggingIn = NO;
+
 - (void)logonWithUsername:(NSString *)username password:(NSString *)password {
+    if (userIsLoggingIn) {
+        return;
+    }
     NSArray *params = @[@{@"A": [self generateAuthVerificationKeyWithUsername:username password:password],
                           @"user": @{@"email":username}}];
+    userIsLoggingIn = YES;
+    [self sendWithMethodName:@"beginPasswordExchange" parameters:params];
+}
 
-    [self sendWithMethodName:@"beginPasswordExchange"
-                  parameters:params];
+- (void)logout {
+    [self sendWithMethodName:@"logout" parameters:nil];
 }
 
 #pragma mark <ObjectiveDDPDelegate>
 
+static int LOGON_RETRY_MAX = 5;
+
 - (void)didReceiveMessage:(NSDictionary *)message {
     NSString *msg = [message objectForKey:@"msg"];
     NSString *messageId = message[@"id"];
-
+    
     if ([self.methodIds containsObject:messageId]) {
         if(msg && [msg isEqualToString:@"result"]) {
             NSDictionary *response = message[@"result"];
-            NSString *notificationName = [NSString stringWithFormat:@"response_%@", message[@"id"]];
-            [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self userInfo:response];
+            NSString *notificationName = [NSString stringWithFormat:@"response_%@", messageId];
+            [[NSNotificationCenter defaultCenter] postNotificationName:notificationName
+                                                                object:self
+                                                              userInfo:response];
             [self.methodIds removeObject:messageId];
         }
     } else if (msg && [msg isEqualToString:@"result"]
-            && message[@"result"]
-            && message[@"result"][@"B"]
-            && message[@"result"][@"identity"]
-            && message[@"result"][@"salt"]) {
+               && message[@"result"]
+               && [message[@"result"] isKindOfClass:[NSDictionary class]]               
+               && message[@"result"][@"B"]
+               && message[@"result"][@"identity"]
+               && message[@"result"][@"salt"]) {
         NSDictionary *response = message[@"result"];
         [self didReceiveLoginChallengeWithResponse:response];
     } else if(msg && [msg isEqualToString:@"result"]
               && message[@"error"]
               && [message[@"error"][@"error"]integerValue] == 403) {
-        [self.authDelegate authenticationFailed:message[@"error"][@"reason"]];
+        userIsLoggingIn = NO;
+        if (++self.retryAttempts < LOGON_RETRY_MAX) {
+            [self logonWithUsername:self.userName password:self.password];
+        } else {
+            self.retryAttempts = 0;
+            [self.authDelegate authenticationFailed:message[@"error"][@"reason"]];
+        }
     } else if (msg && [msg isEqualToString:@"result"]
-            && message[@"result"]
-            && message[@"result"][@"id"]
-            && message[@"result"][@"HAMK"]
-            && message[@"result"][@"token"]) {
+               && message[@"result"]
+               && [message[@"result"] isKindOfClass:[NSDictionary class]]
+               && message[@"result"][@"id"]
+               && message[@"result"][@"HAMK"]
+               && message[@"result"][@"token"]) {
         NSDictionary *response = message[@"result"];
         [self didReceiveHAMKVerificationWithResponse:response];
     } else if (msg && [msg isEqualToString:@"added"]
-            && message[@"collection"]) {
+               && message[@"collection"]) {
         NSDictionary *object = [self _parseObjectAndAddToCollection:message];
         NSString *notificationName = [NSString stringWithFormat:@"%@_added", message[@"collection"]];
         [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self userInfo:object];
@@ -138,10 +157,9 @@
         [[NSNotificationCenter defaultCenter] postNotificationName:@"changed" object:self userInfo:object];
     } else if (msg && [msg isEqualToString:@"connected"]) {
         [[NSNotificationCenter defaultCenter] postNotificationName:@"connected" object:nil];
+        self.connected = YES;
         if (self.sessionToken) {
-            NSArray *params = @[@{@"resume": self.sessionToken}];
-            [self sendWithMethodName:@"login"
-                          parameters:params];
+            [self sendWithMethodName:@"login" parameters:@[@{@"resume": self.sessionToken}]];
         }
         [self makeMeteorDataSubscriptions];
     } else if (msg && [msg isEqualToString:@"ready"]) {
@@ -167,9 +185,7 @@
 }
 
 - (void)reconnect {
-    NSLog(@"================> attempting reconnect");
     if (self.ddp.webSocket.readyState == SR_OPEN) {
-        NSLog(@"================> socket already open, reconnect not required");
         return;
     }
     [self.ddp connectWebSocket];
@@ -177,6 +193,7 @@
 
 - (void)didReceiveConnectionError:(NSError *)error {
     self.websocketReady = NO;
+    self.connected = NO;
     [self performSelector:@selector(reconnect)
                withObject:self
                afterDelay:5.0];
@@ -184,6 +201,7 @@
 
 - (void)didReceiveConnectionClose {
     self.websocketReady = NO;
+    self.connected = NO;
     [self performSelector:@selector(reconnect)
                withObject:self
                afterDelay:5.0];
@@ -193,7 +211,7 @@
 
 - (void)makeMeteorDataSubscriptions {
     for (NSString *key in [self.subscriptions allKeys]) {
-        NSString *uid = [[BSONIdGenerator generate] substringToIndex:15];
+        NSString *uid = [BSONIdGenerator generate];
         [self.subscriptions setObject:uid forKey:key];  
         NSArray *params = self.subscriptionsParameters[key];
         [self.ddp subscribeWith:uid name:key parameters:params];
@@ -247,37 +265,16 @@
 
 # pragma mark Meteor SRP Wrapper
 
-SRP_HashAlgorithm alg     = SRP_SHA256;
-SRP_NGType        ng_type = SRP_NG_1024;
-struct SRPUser     * usr;
+static SRPUser *srpUser;
 
 - (NSString *)generateAuthVerificationKeyWithUsername:(NSString *)username password:(NSString *)password {
-    //TODO: don't really need to keep bytes_A and len_A here, could remove them and push into srp lib
-    const unsigned char * bytes_A = 0;
-    int len_A   = 0;
-    const char * Astr = 0;
-    const char * auth_username = 0;
-    const char * username_str = [username cStringUsingEncoding:NSASCIIStringEncoding];
-    const char * password_str = [password cStringUsingEncoding:NSASCIIStringEncoding];
-
+    self.userName = username;
     self.password = password;
-
-    /* Begin authentication process */
-    usr = srp_user_new(alg,
-            ng_type,
-            username_str,
-            password_str,
-            strlen(password_str),
-            NULL,
-            NULL);
-
-    srp_user_start_authentication(usr,
-            &auth_username,
-            &bytes_A,
-            &len_A,
-            &Astr);
-
-    return [NSString stringWithCString:Astr encoding:NSASCIIStringEncoding];
+    const char *username_str = [username cStringUsingEncoding:NSASCIIStringEncoding];
+    const char *password_str = [password cStringUsingEncoding:NSASCIIStringEncoding];
+    srpUser = srp_user_new(SRP_SHA256, SRP_NG_1024, username_str, password_str, NULL, NULL);
+    srp_user_start_authentication(srpUser);
+    return [NSString stringWithCString:srpUser->Astr encoding:NSASCIIStringEncoding];
 }
 
 - (void)didReceiveLoginChallengeWithResponse:(NSDictionary *)response {
@@ -287,24 +284,22 @@ struct SRPUser     * usr;
     const char *salt = [salt_string cStringUsingEncoding:NSASCIIStringEncoding];
     NSString *identity_string = response[@"identity"];
     const char *identity = [identity_string cStringUsingEncoding:NSASCIIStringEncoding];
-    const char * password_str = [self.password cStringUsingEncoding:NSASCIIStringEncoding];
-    const char * Mstr;
-
-    srp_user_process_meteor_challenge(usr, password_str, salt, identity, B, &Mstr);
+    const char *password_str = [self.password cStringUsingEncoding:NSASCIIStringEncoding];
+    const char *Mstr;
+    srp_user_process_meteor_challenge(srpUser, password_str, salt, identity, B, &Mstr);
     NSString *M_final = [NSString stringWithCString:Mstr encoding:NSASCIIStringEncoding];
     NSArray *params = @[@{@"srp":@{@"M":M_final}}];
-
-    [self sendWithMethodName:@"login"
-                  parameters:params];
+    [self sendWithMethodName:@"login" parameters:params];
 }
 
 - (void)didReceiveHAMKVerificationWithResponse:(NSDictionary *)response {
-    srp_user_verify_meteor_session(usr, [response[@"HAMK"] cStringUsingEncoding:NSASCIIStringEncoding]);
-
+    userIsLoggingIn = NO;
+    srp_user_verify_meteor_session(srpUser, [response[@"HAMK"] cStringUsingEncoding:NSASCIIStringEncoding]);
     if (srp_user_is_authenticated) {
         self.sessionToken = response[@"token"];
         self.userId = response[@"id"];
         [self.authDelegate authenticationWasSuccessful];
+        srp_user_delete(srpUser);
     }
 }
 

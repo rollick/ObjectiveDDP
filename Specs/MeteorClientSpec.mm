@@ -22,9 +22,9 @@ describe(@"MeteorClient", ^{
 
     it(@"is correctly initialized", ^{
         meteorClient.websocketReady should_not be_truthy;
+        meteorClient.connected should_not be_truthy;
         meteorClient.collections should_not be_nil;
         meteorClient.subscriptions should_not be_nil;
-        meteorClient.websocketReady should_not be_truthy;
     });
 
     describe(@"#addSubscription:", ^{
@@ -141,9 +141,22 @@ describe(@"MeteorClient", ^{
                     .and_with(@"beginPasswordExchange")
                     .and_with(anything);
             });
+            
+            describe(@"#logout", ^{
+                beforeEach(^{
+                    [meteorClient logout];
+                });
+                
+                it(@"sends the logout message correclty", ^{
+                    ddp should have_received(@selector(methodWithId:method:parameters:))
+                        .with(anything)
+                        .and_with(@"logout")
+                        .and_with(anything);
+                });
+            });
         });
 
-        context(@"when websocket is ready", ^{
+        context(@"when websocket is NOT ready", ^{
             beforeEach(^{
                 meteorClient.websocketReady = NO;
                 [meteorClient logonWithUsername:@"JesseJames"
@@ -221,6 +234,7 @@ describe(@"MeteorClient", ^{
                     @"msg": @"result",
                     @"error": @{@"error": @403, @"reason": @"are you kidding me?"}
                 };
+                meteorClient.retryAttempts = 5;
                 [meteorClient didReceiveMessage:authErrorMessage];
             });
 
@@ -321,26 +335,6 @@ describe(@"MeteorClient", ^{
                                                                                       .and_with(meteorClient);
                 });
             });
-        });
-    });
-});
-
-describe(@"MeteorClient SRP Auth", ^{
-    __block MeteorClient *meteorClient;
-
-    beforeEach(^{
-        meteorClient = [[MeteorClient alloc] init];
-    });
-
-    describe(@"-generateAuthVerificationKeyWithUsername:password", ^{
-        __block NSString *authKey;
-
-        beforeEach(^{
-            authKey = [meteorClient generateAuthVerificationKeyWithUsername:@"joeuser" password:@"secretsauce"];
-        });
-
-        it(@"computes the key correctly", ^{
-            authKey should_not be_nil;
         });
     });
 });

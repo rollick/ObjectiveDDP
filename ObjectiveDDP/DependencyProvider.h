@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import "srp/srp.h"
 
 @class SRWebSocket;
 

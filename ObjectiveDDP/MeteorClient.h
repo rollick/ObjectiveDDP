@@ -13,6 +13,8 @@
 @property (copy, nonatomic) NSString *sessionToken;
 @property (copy, nonatomic) NSString *userId;
 @property (assign, nonatomic) BOOL websocketReady;
+@property (assign, nonatomic) BOOL connected;
+@property (nonatomic, assign) int retryAttempts;
 
 - (NSString *)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters notifyOnResponse:(BOOL)notify;
 - (void)sendWithMethodName:(NSString *)methodName parameters:(NSArray *)parameters;
@@ -21,10 +23,7 @@
 - (void)removeSubscription:(NSString *)subscriptionName;
 - (void)resetCollections;
 - (void)logonWithUsername:(NSString *)username password:(NSString *)password;
-
-// TODO: These methods are only temporarily public, should be impl detail of MeteorClient
-- (NSString *)generateAuthVerificationKeyWithUsername:(NSString *)username password:(NSString *)password;
-//- (void)processMeteorChallenge
+- (void)logout;
 
 @end
 
